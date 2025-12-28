@@ -3,6 +3,7 @@ mod utils;
 
 use crate::server::udp::create_udp_socket;
 use crate::utils::constants::{IP, PORT};
+use crate::utils::header_parser::parseHeaders;
 
 #[allow(dead_code, warnings)]
 
@@ -21,5 +22,7 @@ fn main() {
             "Number of bytes: {}\nSource Address: {}\nfilled Buf: {:?}\n\n",
             number_of_bytes, src_addr, filled_buf
         );
+
+        parseHeaders(filled_buf);
     }
 }
