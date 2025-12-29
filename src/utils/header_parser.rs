@@ -1,11 +1,50 @@
 #[allow(warnings)]
 pub fn createResponse(buf: &[u8]) {
-    let id_raw: &[u8] = &buf[..2];
+    let ID: String = buf[..2].iter().map(|i: &u8| format!("{:02X}", i)).collect();
 
-    let id: String = id_raw.iter().map(|i: &u8| format!("{:02X}", i)).collect();
+    let FLAGS: String = createFlags(&buf[2..4]);
 
-    let flags: String = createFlags(&buf[2..4]);
+    let QDCOUNT: String = format!("{:02X}", 01); // question count is always 1
+
+    // assuming 0 for these
+    let NSCOUNT: String = format!("{:02X}", 00);
+    let ARCOUNT: String = format!("{:02X}", 00);
+
+    let (domain_name, domain_type): (String, String) = getDomainNameAndRecordType(&buf[12..]);
 }
+
+#[allow(warnings)]
+fn getDomainNameAndRecordType(buf: &[u8]) -> (String, String) {
+    let mut x: usize = 0;
+    let mut domain_string: String = String::new();
+    let mut domain_type: String = String::new();
+
+    while buf[x] != 0 {
+        let fixed_length: usize = buf[x] as usize;
+        x += 1;
+
+        for i in 0..fixed_length {
+            domain_string.push(buf[x + i] as char);
+        }
+
+        x += fixed_length;
+
+        if (buf[x] != 0) {
+            domain_string.push('.');
+        }
+    }
+
+    print!("x: {x}\n");
+    for i in x + 1..x + 3 {
+        domain_type.push_str(&format!("{:02X}", buf[i]));
+    }
+
+    println!("{domain_type}");
+    (domain_string, domain_type)
+}
+
+#[allow(warnings)]
+fn createHeaders(buf: &[u8]) {}
 
 #[allow(warnings)]
 fn createFlags(flags_buf: &[u8]) -> String {
