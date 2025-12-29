@@ -3,7 +3,7 @@ mod utils;
 
 use crate::server::udp::create_udp_socket;
 use crate::utils::constants::{IP, PORT};
-use crate::utils::header_parser::parseHeaders;
+use crate::utils::header_parser::createResponse;
 
 #[allow(dead_code, warnings)]
 
@@ -23,6 +23,6 @@ fn main() {
             number_of_bytes, src_addr, filled_buf
         );
 
-        parseHeaders(filled_buf);
+        createResponse(filled_buf);
     }
 }
