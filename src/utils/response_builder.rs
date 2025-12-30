@@ -1,0 +1,130 @@
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+
+use crate::utils::constants::{ARECORDS, CNAMERECORDS};
+
+pub fn create_response(buf: &[u8]) {
+    let headers: String = create_headers(buf);
+    println!("Headers: {headers}");
+}
+
+fn get_domain_name_and_record_type(buf: &[u8]) -> (String, String) {
+    let mut x: usize = 0;
+    let mut domain_string: String = String::new();
+    let mut domain_type: String = String::new();
+
+    while buf[x] != 0 {
+        let fixed_length: usize = buf[x] as usize;
+        x += 1;
+
+        for i in 0..fixed_length {
+            domain_string.push(buf[x + i] as char);
+        }
+
+        x += fixed_length;
+
+        if buf[x] != 0 {
+            domain_string.push('.');
+        }
+    }
+
+    for i in x + 1..x + 3 {
+        domain_type.push_str(&format!("{:02X}", buf[i]));
+    }
+
+    (domain_string, domain_type)
+}
+
+fn get_answer_counts(buf: &[u8]) -> usize {
+    let (domain_name, domain_type): (String, String) = get_domain_name_and_record_type(&buf);
+
+    // println!("Domain Name: {domain_name}");
+
+    let mut domain_type_comparable: String = String::new();
+
+    // A RECORD
+    if domain_type == "0001" {
+        domain_type_comparable.push_str(ARECORDS);
+    }
+    // CNAME RECORD
+    else if domain_type == "0005" {
+        domain_type_comparable.push_str(CNAMERECORDS);
+    } else {
+        panic!("This DNS server only supports Type A and Type CNAME Records!");
+    }
+
+    let mut all_records_of_domain_to_be_queried: Vec<String> = vec![];
+
+    if let Ok(lines) = read_lines(format!("{}{domain_name}{}", "records/", ".txt")) {
+        for line in lines
+            .skip(26)
+            .filter_map(Result::ok)
+            .skip_while(|line| line != &domain_type_comparable)
+            .skip(1)
+            .take_while(|line| !line.starts_with(";;"))
+        {
+            all_records_of_domain_to_be_queried.push(line);
+        }
+    }
+
+    if all_records_of_domain_to_be_queried.len() == 0 {
+        panic!(
+            "No such domain found in this dns server!\nMaybe try adding the zone file inside the records directory."
+        );
+    }
+
+    // println!("{:?}", all_records_of_domain_to_be_queried);
+    // println!(
+    //     "Length of records: {}",
+    //     all_records_of_domain_to_be_queried.len() - 1
+    // );
+    all_records_of_domain_to_be_queried.len() - 1 // accounting for an empty string
+}
+
+// https://doc.rust-lang.org/stable/rust-by-example/std_misc/file/read_lines.html
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
+fn create_headers(buf: &[u8]) -> String {
+    let id: String = buf[..2].iter().map(|i: &u8| format!("{:02X}", i)).collect();
+
+    let flags: String = create_flags(&buf[2..4]);
+
+    let qdcount: String = format!("{:04X}", 1); // question count is always 1
+
+    let ancount: String = format!("{:04X}", get_answer_counts(&buf[12..]));
+
+    // assuming 0 for these
+    let nscount: String = format!("{:04X}", 0);
+    let arcount: String = format!("{:04X}", 0);
+
+    format!(
+        "{}{}{}{}{}{}",
+        id, flags, qdcount, ancount, nscount, arcount
+    )
+}
+
+fn create_flags(flags_buf: &[u8]) -> String {
+    let b1: u8 = flags_buf[0];
+
+    let qr: u8 = 1 << 7; // we are sending a response so its 1 always
+    let opcode: u8 = b1 & 0x78;
+    let aa: u8 = 1 << 2; // assuming our server is authorative
+    let tc: u8 = 0 << 1; // we are only handling the packets less than 512 bytes for UDP protocol
+    // let RD: u8 = b1 & 1;
+    let rd: u8 = 0;
+    let ra: i32 = 0 << 7; // not handling recursion
+    let z: i32 = 0 << 4; // reserved bits
+    let rcode: i32 = 0; // not handling error case
+
+    let flags_byte1: u8 = qr | opcode | aa | tc | rd;
+    let flags_byte2: i32 = ra | z | rcode;
+
+    format!("{:02X}{:02X}", flags_byte1, flags_byte2)
+}

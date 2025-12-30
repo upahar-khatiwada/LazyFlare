@@ -1,0 +1,49 @@
+;;
+;; Domain:     upaharkhatiwada.com.np.
+;; Exported:   2025-12-29 14:19:44
+;;
+;; This file is intended for use for informational and archival
+;; purposes ONLY and MUST be edited before use on a production
+;; DNS server.  In particular, you must:
+;;   -- update the SOA record with the correct authoritative name server
+;;   -- update the SOA record with the contact e-mail address information
+;;   -- update the NS record(s) with the authoritative name servers for this domain.
+;;
+;; For further information, please consult the BIND documentation
+;; located on the following website:
+;;
+;; http://www.isc.org/
+;;
+;; And RFC 1035:
+;;
+;; http://www.ietf.org/rfc/rfc1035.txt
+;;
+;; Please note that we do NOT offer technical support for any use
+;; of this zone data, the BIND name server, or any other third-party
+;; DNS software.
+;;
+;; Use at your own risk.
+;; SOA Record
+upaharkhatiwada.com.np	3600	IN	SOA	khloe.ns.cloudflare.com. dns.cloudflare.com. 2051868458 10000 2400 604800 3600
+
+;; NS Records
+upaharkhatiwada.com.np.	86400	IN	NS	khloe.ns.cloudflare.com.
+upaharkhatiwada.com.np.	86400	IN	NS	west.ns.cloudflare.com.
+
+;; A Records
+upaharkhatiwada.com.np.	1	IN	A	216.198.79.1 ; cf_tags=cf-proxied:true
+
+;; CNAME Records
+avl.upaharkhatiwada.com.np.	1	IN	CNAME	1ab6a3d24e3bcf73.vercel-dns-017.com. ; cf_tags=cf-proxied:false
+blogapp.upaharkhatiwada.com.np.	1	IN	CNAME	v6dttycj.up.railway.app. ; cf_tags=cf-proxied:true
+chat.upaharkhatiwada.com.np.	1	IN	CNAME	chat-app-xkgk.onrender.com. ; cf_tags=cf-proxied:true
+em3147.upaharkhatiwada.com.np.	1	IN	CNAME	u58345825.wl076.sendgrid.net. ; cf_tags=cf-proxied:false
+em6466.upaharkhatiwada.com.np.	1	IN	CNAME	u58345825.wl076.sendgrid.net. ; cf_tags=cf-proxied:false
+s1._domainkey.upaharkhatiwada.com.np.	1	IN	CNAME	s1.domainkey.u58345825.wl076.sendgrid.net. ; cf_tags=cf-proxied:false
+s2._domainkey.upaharkhatiwada.com.np.	1	IN	CNAME	s2.domainkey.u58345825.wl076.sendgrid.net. ; cf_tags=cf-proxied:false
+simpletodo.upaharkhatiwada.com.np.	1	IN	CNAME	a58cc343961483dc.vercel-dns-017.com. ; cf_tags=cf-proxied:false
+todo.upaharkhatiwada.com.np.	1	IN	CNAME	bfc8652641d41f9e.vercel-dns-017.com. ; cf_tags=cf-proxied:false
+waveform.upaharkhatiwada.com.np.	1	IN	CNAME	4c480cee6e4f5c41.vercel-dns-017.com. ; cf_tags=cf-proxied:false
+
+;; TXT Records
+_dmarc.upaharkhatiwada.com.np.	1	IN	TXT	"v=DMARC1; p=none; rua=mailto:dmarc@smtp-staging.mailtrap.net; ruf=mailto:dmarc@smtp-staging.mailtrap.net; rf=afrf; pct=100"
