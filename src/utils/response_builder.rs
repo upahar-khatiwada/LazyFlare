@@ -4,21 +4,68 @@ use std::path::Path;
 
 use crate::utils::constants::{ARECORDS, CNAMERECORDS};
 
-pub fn create_response(buf: &[u8]) {
-    let headers: String = create_headers(buf);
-    println!("Headers: {headers}");
-    create_body(&buf[12..]);
+pub fn create_response(buf: &[u8]) -> String {
+    let (headers, all_records_of_current_request): (String, Vec<String>) = create_headers(buf);
+    // println!("Headers: {headers}");
+    let (question_bytes, answer_bytes) = create_body(&buf[12..], &all_records_of_current_request);
+
+    format!("{}{}{}", headers, question_bytes, answer_bytes)
 }
 
-fn create_body(buf: &[u8]) {
-    let question_bytes: String = create_dns_question(buf);
-
-    println!("Body bytes: {question_bytes}")
-}
-
-fn create_dns_question(buf: &[u8]) -> String {
+fn create_body(buf: &[u8], current_request_records: &Vec<String>) -> (String, String) {
     let (domain_name, domain_type): (String, String) = get_domain_name_and_record_type(&buf);
+    let question_bytes: String = create_dns_question(&domain_name, &domain_type);
 
+    // println!("Body bytes: {question_bytes}");
+    // println!("{:?}", current_request_records);
+
+    let answer_bytes: String = create_answers(&domain_type, &current_request_records);
+
+    (question_bytes, answer_bytes)
+}
+
+fn create_answers(domain_type: &String, records: &Vec<String>) -> String {
+    let mut answer_bytes = String::new(); // remove "0000" – invalid
+
+    for record in records {
+        let line: &str = record.split(';').next().unwrap().trim();
+        let parts: Vec<&str> = line.split_whitespace().collect();
+
+        let ttl: u32 = parts[1].parse().unwrap();
+        let rdata = parts[4];
+
+        // println!("TTL: {ttl}, RDATA: {rdata}\n");
+
+        answer_bytes.push_str("C00C");
+
+        if domain_type == "0001" {
+            answer_bytes.push_str("0001");
+        } else {
+            answer_bytes.push_str("0005");
+        }
+
+        answer_bytes.push_str("0001"); // IN CLASS
+
+        answer_bytes.push_str(&format!("{:08X}", ttl));
+
+        if domain_type == "0001" {
+            let octets: Vec<u8> = rdata
+                .split('.')
+                .map(|x: &str| x.parse::<u8>().unwrap())
+                .collect();
+            answer_bytes.push_str("0004");
+            for b in octets {
+                answer_bytes.push_str(&format!("{:02X}", b));
+            }
+        }
+    }
+
+    return answer_bytes;
+
+    // println!("Answer Bytes: {answer_bytes}");
+}
+
+fn create_dns_question(domain_name: &String, domain_type: &String) -> String {
     let mut question_bytes: String = String::new();
 
     for part in domain_name.split('.') {
@@ -70,7 +117,7 @@ fn get_domain_name_and_record_type(buf: &[u8]) -> (String, String) {
     (domain_string, domain_type)
 }
 
-fn get_answer_counts(buf: &[u8]) -> usize {
+fn get_answer_counts(buf: &[u8]) -> (usize, Vec<String>) {
     let (domain_name, domain_type): (String, String) = get_domain_name_and_record_type(&buf);
 
     // println!("Domain Name: {domain_name}");
@@ -113,7 +160,12 @@ fn get_answer_counts(buf: &[u8]) -> usize {
     //     "Length of records: {}",
     //     all_records_of_domain_to_be_queried.len() - 1
     // );
-    all_records_of_domain_to_be_queried.len() - 1 // accounting for an empty string
+
+    all_records_of_domain_to_be_queried.pop();
+    (
+        all_records_of_domain_to_be_queried.len(),
+        all_records_of_domain_to_be_queried,
+    ) // accounting for an empty string
 }
 
 // https://doc.rust-lang.org/stable/rust-by-example/std_misc/file/read_lines.html
@@ -125,22 +177,27 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn create_headers(buf: &[u8]) -> String {
+fn create_headers(buf: &[u8]) -> (String, Vec<String>) {
     let id: String = buf[..2].iter().map(|i: &u8| format!("{:02X}", i)).collect();
 
     let flags: String = create_flags(&buf[2..4]);
 
     let qdcount: String = format!("{:04X}", 1); // question count is always 1
 
-    let ancount: String = format!("{:04X}", get_answer_counts(&buf[12..]));
+    let (ancount, all_records_of_current_request): (usize, Vec<String>) =
+        get_answer_counts(&buf[12..]);
+    let ancount: String = format!("{:04X}", ancount);
 
     // assuming 0 for these
     let nscount: String = format!("{:04X}", 0);
     let arcount: String = format!("{:04X}", 0);
 
-    format!(
-        "{}{}{}{}{}{}",
-        id, flags, qdcount, ancount, nscount, arcount
+    (
+        format!(
+            "{}{}{}{}{}{}",
+            id, flags, qdcount, ancount, nscount, arcount
+        ),
+        all_records_of_current_request,
     )
 }
 
