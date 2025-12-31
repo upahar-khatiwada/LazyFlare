@@ -49,14 +49,32 @@ fn create_answers(domain_type: &String, records: &Vec<String>) -> String {
         answer_bytes.push_str(&format!("{:08X}", ttl));
 
         if domain_type == "0001" {
+            let mut rdata_bytes = String::new();
             let octets: Vec<u8> = rdata
                 .split('.')
                 .map(|x: &str| x.parse::<u8>().unwrap())
                 .collect();
-            answer_bytes.push_str("0004");
             for b in octets {
-                answer_bytes.push_str(&format!("{:02X}", b));
+                rdata_bytes.push_str(&format!("{:02X}", b));
             }
+
+            let rdlength = rdata_bytes.len() / 2;
+            answer_bytes.push_str(&format!("{:04X}", rdlength));
+            answer_bytes.push_str(&rdata_bytes);
+        } else {
+            // THIS PART IS FOR CNAME RECORDS
+            let mut rdata_bytes = String::new();
+            for part in rdata.trim_end_matches('.').split('.') {
+                rdata_bytes.push_str(&format!("{:02X}", part.len()));
+                for b in part.as_bytes() {
+                    rdata_bytes.push_str(&format!("{:02X}", b));
+                }
+            }
+            rdata_bytes.push_str("00");
+
+            let rdlength = rdata_bytes.len() / 2;
+            answer_bytes.push_str(&format!("{:04X}", rdlength));
+            answer_bytes.push_str(&rdata_bytes);
         }
     }
 
@@ -117,6 +135,19 @@ fn get_domain_name_and_record_type(buf: &[u8]) -> (String, String) {
     (domain_string, domain_type)
 }
 
+fn get_zone_file_for_domain(domain_name: &str) -> String {
+    let mut domain_file = format!("records/{}.txt", domain_name);
+
+    if !Path::new(&domain_file).exists() {
+        if let Some(pos) = domain_name.find('.') {
+            let parent_domain = &domain_name[pos + 1..];
+            domain_file = format!("records/{}.txt", parent_domain);
+        }
+    }
+
+    domain_file
+}
+
 fn get_answer_counts(buf: &[u8]) -> (usize, Vec<String>) {
     let (domain_name, domain_type): (String, String) = get_domain_name_and_record_type(&buf);
 
@@ -137,13 +168,16 @@ fn get_answer_counts(buf: &[u8]) -> (usize, Vec<String>) {
 
     let mut all_records_of_domain_to_be_queried: Vec<String> = vec![];
 
-    if let Ok(lines) = read_lines(format!("{}{domain_name}{}", "records/", ".txt")) {
+    let zone_file = get_zone_file_for_domain(&domain_name);
+    let query_domain = format!("{}.", domain_name);
+    if let Ok(lines) = read_lines(zone_file) {
         for line in lines
             .skip(26)
             .filter_map(Result::ok)
             .skip_while(|line| line != &domain_type_comparable)
             .skip(1)
             .take_while(|line| !line.starts_with(";;"))
+            .filter(|line| line.starts_with(&query_domain))
         {
             all_records_of_domain_to_be_queried.push(line);
         }
@@ -161,7 +195,7 @@ fn get_answer_counts(buf: &[u8]) -> (usize, Vec<String>) {
     //     all_records_of_domain_to_be_queried.len() - 1
     // );
 
-    all_records_of_domain_to_be_queried.pop();
+    // all_records_of_domain_to_be_queried.pop();
     (
         all_records_of_domain_to_be_queried.len(),
         all_records_of_domain_to_be_queried,
