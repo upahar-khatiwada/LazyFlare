@@ -7,6 +7,40 @@ use crate::utils::constants::{ARECORDS, CNAMERECORDS};
 pub fn create_response(buf: &[u8]) {
     let headers: String = create_headers(buf);
     println!("Headers: {headers}");
+    create_body(&buf[12..]);
+}
+
+fn create_body(buf: &[u8]) {
+    let question_bytes: String = create_dns_question(buf);
+
+    println!("Body bytes: {question_bytes}")
+}
+
+fn create_dns_question(buf: &[u8]) -> String {
+    let (domain_name, domain_type): (String, String) = get_domain_name_and_record_type(&buf);
+
+    let mut question_bytes: String = String::new();
+
+    for part in domain_name.split('.') {
+        let len: usize = part.len();
+        question_bytes.push_str(&format!("{:02X}", len));
+
+        for b in part.as_bytes() {
+            question_bytes.push_str(&format!("{:02X}", b));
+        }
+    }
+
+    question_bytes.push_str("00");
+
+    if domain_type == "0001" {
+        question_bytes.push_str(&format!("{:04X}", 1));
+    } else {
+        question_bytes.push_str(&format!("{:04X}", 5));
+    }
+
+    question_bytes.push_str("0001"); // DNS CLASS IN
+
+    question_bytes
 }
 
 fn get_domain_name_and_record_type(buf: &[u8]) -> (String, String) {
