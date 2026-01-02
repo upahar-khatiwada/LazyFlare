@@ -25,7 +25,7 @@ fn create_body(buf: &[u8], current_request_records: &Vec<String>) -> (String, St
 }
 
 fn create_answers(domain_type: &String, records: &Vec<String>) -> String {
-    let mut answer_bytes = String::new(); // remove "0000" – invalid
+    let mut answer_bytes = String::new();
 
     for record in records {
         let line: &str = record.split(';').next().unwrap().trim();
@@ -33,9 +33,7 @@ fn create_answers(domain_type: &String, records: &Vec<String>) -> String {
 
         let ttl: u32 = parts[1].parse().unwrap();
         let rdata = parts[4];
-
-        // println!("TTL: {ttl}, RDATA: {rdata}\n");
-
+        
         answer_bytes.push_str("C00C");
 
         if domain_type == "0001" {
@@ -79,8 +77,6 @@ fn create_answers(domain_type: &String, records: &Vec<String>) -> String {
     }
 
     return answer_bytes;
-
-    // println!("Answer Bytes: {answer_bytes}");
 }
 
 fn create_dns_question(domain_name: &String, domain_type: &String) -> String {
